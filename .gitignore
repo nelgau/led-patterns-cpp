@@ -1,0 +1,3 @@
+*.dSYM/
+/patterns
+.DS_Store
