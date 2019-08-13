@@ -53,6 +53,7 @@ public:
     bool setLayout(const char *filename);
     void setEffect(Effect* effect);
     void setMaxFrameRate(float fps);
+    void setChannel(const int channel);
     void setVerbose(bool verbose = true);
 
     bool hasLayout() const;
@@ -107,6 +108,7 @@ private:
     float filteredTimeDelta;
     float debugTimer;
     float speed;
+    int channel;
     bool verbose;
     struct timeval lastTime;
     float jitterStatsMin;
@@ -129,6 +131,7 @@ inline EffectRunner::EffectRunner()
       filteredTimeDelta(0),
       debugTimer(0),
       speed(1.0),
+      channel(0),
       verbose(false),
       jitterStatsMin(1),
       jitterStatsMax(0)
@@ -156,6 +159,10 @@ inline bool EffectRunner::setServer(const char *hostport)
     return opc.resolve(hostport);
 }
 
+inline void EffectRunner::setChannel(const int channel) {
+    this->channel = channel;
+}
+
 inline bool EffectRunner::setLayout(const char *filename)
 {
     FILE *f = fopen(filename, "r");
@@ -177,7 +184,7 @@ inline bool EffectRunner::setLayout(const char *filename)
     // Set up an empty framebuffer, with OPC packet header
     int frameBytes = layout.Size() * 3;
     frameBuffer.resize(sizeof(OPCClient::Header) + frameBytes);
-    OPCClient::Header::view(frameBuffer).init(0, opc.SET_PIXEL_COLORS, frameBytes);
+    OPCClient::Header::view(frameBuffer).init(0, opc.SET_PIXEL_COLORS, frameBytes);    
 
     // Init pixel info
     frameInfo.init(layout);
@@ -293,6 +300,7 @@ inline EffectRunner::FrameStatus EffectRunner::doFrame(float timeDelta)
                 }
             }
 
+            OPCClient::Header::view(frameBuffer).channel = channel;
             opc.write(frameBuffer);
         }
 
@@ -447,6 +455,16 @@ inline bool EffectRunner::parseArgument(int &i, int &argc, char **argv)
         return true;
     }
 
+    if (!strcmp(argv[i], "-channel") && (i+1 < argc)) {
+        int channel = atoi(argv[++i]);
+        if (channel <= 0) {
+            fprintf(stderr, "Invalid channel %s\n", argv[i]);
+            return false;
+        }
+        setChannel(channel);
+        return true;
+    }    
+
     return false;
 }
 
@@ -462,5 +480,5 @@ inline bool EffectRunner::validateArguments()
 
 inline void EffectRunner::argumentUsage()
 {
-    fprintf(stderr, "[-v] [-fps LIMIT] [-speed MULTIPLIER] [-layout FILE.json] [-server HOST[:port]]");
+    fprintf(stderr, "[-v] [-fps LIMIT] [-speed MULTIPLIER] [-layout FILE.json] [-server HOST[:port]] [-channel CHANNEL]");
 }
